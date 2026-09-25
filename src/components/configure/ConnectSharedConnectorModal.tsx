@@ -12,6 +12,7 @@ import {
 import {
   connectorActionStore, ACTION_PERMISSION_LABEL, type ActionPermission,
 } from "./connectorActionStore";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface ConnectableConnector {
   id: string;
@@ -77,16 +78,12 @@ export default function ConnectSharedConnectorModal({
 
   const filtered = connectors.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()));
 
-  /** Step 2 of the spec: what the account step shows depends purely on how many Shared accounts
-   * the workspace already has for this connector. */
+  /** Step 2: always the same screen — the workspace accounts for this connector as a list, with
+   * "Connect a new account" at the end of it. Zero accounts is just that list empty rather than
+   * a different screen, so the add-account action never moves around between connectors. */
   const openAccountStep = (connectorId: string) => {
     const existing = sharedConnectorAccountStore.listForConnector(connectorId);
-    if (existing.length === 0) {
-      setOauthEmail(suggestedEmail(connectorId, existing));
-      setStep("oauth");
-      return;
-    }
-    setChosenAccountId(existing[0].id);
+    setChosenAccountId(existing[0]?.id ?? null);
     setStep("account");
   };
 
@@ -96,7 +93,9 @@ export default function ConnectSharedConnectorModal({
   };
 
   /** Mock OAuth: no real provider to call, so authorising always succeeds after a short beat —
-   * enough to show the round trip without pretending to validate anything. */
+   * enough to show the round trip without pretending to validate anything. Lands back on the
+   * account list with the new account selected: authorising an account and choosing which one
+   * this agent runs as are two different decisions, and the second one is still open. */
   const authorise = () => {
     if (!selected || !oauthEmail.trim()) return;
     setAuthorising(true);
@@ -105,7 +104,8 @@ export default function ConnectSharedConnectorModal({
       setAuthorising(false);
       setChosenAccountId(account.id);
       setTick(t => t + 1);
-      attach(account.id);
+      setStep("account");
+      toast.success(`Đã thêm tài khoản ${account.email}.`);
     }, 700);
   };
 
@@ -121,7 +121,7 @@ export default function ConnectSharedConnectorModal({
     attach(chosenAccountId);
   };
 
-  const connectDifferentAccount = () => {
+  const addAnotherAccount = () => {
     if (!selected) return;
     setOauthEmail(suggestedEmail(selected.id, accounts));
     setStep("oauth");
@@ -138,7 +138,8 @@ export default function ConnectSharedConnectorModal({
 
   const goBack = () => {
     if (step === "account") { setStep("pick"); return; }
-    if (step === "oauth") { setStep(accounts.length > 0 ? "account" : "pick"); return; }
+    // The account list is always a real step now, so OAuth always has somewhere to go back to.
+    if (step === "oauth") { setStep("account"); return; }
   };
 
   return createPortal(
@@ -243,67 +244,71 @@ export default function ConnectSharedConnectorModal({
         {step === "account" && selected && (
           <>
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              {accounts.length === 1 ? (
-                // Exactly one account exists — name it outright rather than making the user open
-                // a one-item dropdown to discover what they'd be agreeing to.
-                <div className="rounded-md border p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="w-10 h-10 rounded-md border bg-card flex items-center justify-center text-sm font-semibold shrink-0">{selected.logo}</span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">Connected as {accounts[0].email}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Đã kết nối bởi {accounts[0].connectedBy} · tài khoản dùng chung của workspace
-                      </p>
-                    </div>
+              <p className="text-sm font-medium mb-2">Tài khoản dùng chung của workspace</p>
+              <div className="space-y-2">
+                {accounts.length === 0 && (
+                  // Empty is still the same list, not a different screen — so the add-account
+                  // action stays exactly where it is for every connector.
+                  <div className="rounded-md border border-dashed px-3.5 py-5 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có tài khoản dùng chung nào cho {selected.name}.
+                    </p>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Tài khoản dùng chung đã có</p>
-                  {accounts.map(a => {
-                    const active = chosenAccountId === a.id;
-                    return (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => setChosenAccountId(a.id)}
-                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-md border text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
-                          active ? "border-primary bg-primary/5" : "hover:bg-muted"
-                        }`}
-                      >
-                        <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${active ? "border-primary" : "border-border"}`}>
-                          {active && <span className="w-2 h-2 rounded-full bg-primary" />}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-medium truncate">{a.email}</span>
-                          <span className="block text-xs text-muted-foreground truncate">Đã kết nối bởi {a.connectedBy}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={connectDifferentAccount}
-                    className="w-full flex items-center gap-2 px-3.5 py-3 rounded-md border border-dashed text-sm font-medium text-primary hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                  >
-                    <HugeiconsIcon icon={Add01Icon} size={16} /> Connect a new account
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-2 px-6 py-4 border-t shrink-0">
-              {accounts.length === 1 ? (
-                <button onClick={connectDifferentAccount} className="h-9 px-4 rounded-md border bg-transparent hover:bg-muted text-sm font-medium transition-colors">
-                  Connect a different account
+                )}
+                {accounts.map(a => {
+                  const active = chosenAccountId === a.id;
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => setChosenAccountId(a.id)}
+                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-md border text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                        active ? "border-primary bg-primary/5" : "hover:bg-muted"
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${active ? "border-primary" : "border-border"}`}>
+                        {active && <span className="w-2 h-2 rounded-full bg-primary" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium truncate">Connected as {a.email}</span>
+                        <span className="block text-xs text-muted-foreground truncate">Đã kết nối bởi {a.connectedBy}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={addAnotherAccount}
+                  className="w-full flex items-center gap-2 px-3.5 py-3 rounded-md border border-dashed text-sm font-medium text-primary hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  <HugeiconsIcon icon={Add01Icon} size={16} /> Connect a new account
                 </button>
-              ) : <span />}
-              <button
-                onClick={useChosenAccount}
-                disabled={!chosenAccountId}
-                className="h-9 px-5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {accounts.length === 1 ? "Use this account" : "Dùng tài khoản này"}
-              </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t shrink-0">
+              <button onClick={onClose} className="h-9 px-4 rounded-md border bg-transparent hover:bg-muted text-sm font-medium transition-colors">Hủy</button>
+              {chosenAccountId ? (
+                <button
+                  onClick={useChosenAccount}
+                  className="h-9 px-5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors"
+                >
+                  Connect
+                </button>
+              ) : (
+                // A disabled <button> swallows its own hover events, so the tooltip hangs off a
+                // wrapper span — same pattern the Knowledge export modal uses.
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <span
+                      tabIndex={0}
+                      className="h-9 px-5 rounded-md bg-primary text-primary-foreground text-sm font-medium inline-flex items-center opacity-40 cursor-not-allowed outline-none"
+                    >
+                      Connect
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Thêm tài khoản để connect.</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </>
         )}

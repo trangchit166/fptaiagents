@@ -102,7 +102,7 @@ export default function AddCustomConnectorModal({ editing, onClose, onCreated, o
 
   const setO = (k: keyof ConnectorOAuth, v: string) => setOauth(o => ({ ...o, [k]: v }));
   const touch = (k: string) => setTouched(t => ({ ...t, [k]: true }));
-  const show = (k: string) => submitted || touched[k];
+
 
   const requiredUrl = (v: string | undefined, label: string) =>
     !v?.trim() ? `Vui lòng nhập ${label}.` : !isHttpUrl(v) ? "Nhập một URL http(s) hợp lệ." : undefined;
@@ -115,6 +115,8 @@ export default function AddCustomConnectorModal({ editing, onClose, onCreated, o
     clientId: authType === "oauth_manual" && !oauth.clientId?.trim() ? "Vui lòng nhập Client ID." : undefined,
   };
   const hasErrors = Object.values(errors).some(Boolean);
+  // "Required" errors wait for "Lưu server"; a malformed value shows as soon as the field is left.
+  const show = (k: string) => submitted || (touched[k] && !errors[k]?.startsWith("Vui lòng"));
 
   const submit = () => {
     setSubmitted(true);

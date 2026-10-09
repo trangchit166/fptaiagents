@@ -30,6 +30,11 @@ describe("Thêm MCP tùy chỉnh", () => {
 
   it("validates name and URL inline", () => {
     const { onCreated } = setup();
+    fireEvent.blur(screen.getByLabelText("Tên"));
+    expect(screen.queryByText("Vui lòng nhập tên.")).toBeNull();
+    type("URL", "not a url"); fireEvent.blur(screen.getByLabelText("URL"));
+    expect(screen.getByText("Nhập một URL http(s) hợp lệ.")).toBeTruthy();
+    type("URL", "");
     fireEvent.click(screen.getByRole("button", { name: "Lưu server" }));
     expect(screen.getByText("Vui lòng nhập tên.")).toBeTruthy();
     expect(screen.getByText("Vui lòng nhập URL.")).toBeTruthy();

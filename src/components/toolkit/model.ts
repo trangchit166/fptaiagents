@@ -108,11 +108,11 @@ export function parseParams(text: string): Parsed<Param[]> {
   if (!text.trim()) return { ok: true, value: [] };
   const j = parseJson(text);
   if (j.ok === false) return { ok: false, error: j.error };
-  if (!Array.isArray(j.value)) return { ok: false, error: "Params phải là một mảng JSON." };
+  if (!Array.isArray(j.value)) return { ok: false, error: "Parameters phải là một mảng JSON." };
   const out: Param[] = [];
   for (let i = 0; i < j.value.length; i++) {
     const p = j.value[i] as Record<string, unknown>;
-    const at = `Params[${i}]`;
+    const at = `Parameters[${i}]`;
     if (!p || typeof p !== "object" || Array.isArray(p)) return { ok: false, error: `${at} phải là một object.` };
     if (typeof p.name !== "string" || !p.name.trim()) return { ok: false, error: `${at}.name là chuỗi bắt buộc.` };
     if (!PARAM_INS.includes(p.in as ParamIn)) return { ok: false, error: `${at}.in phải là path, query hoặc body.` };
@@ -273,19 +273,12 @@ export function validate(form: KitForm, takenNames: string[] = existingKitNames)
         const vars = pathVars(op.path);
         const missing = vars.filter(v => !pathParams.includes(v));
         const unused = pathParams.filter(p => !vars.includes(p));
-        if (missing.length) err(k("params"), `Path có {${missing.join("}, {")}} chưa có trong Params.`);
+        if (missing.length) err(k("params"), `Path có {${missing.join("}, {")}} chưa có trong Parameters.`);
         else if (unused.length) err(k("params"), `Param in=path "${unused[0]}" không có trong path.`);
         else if (!methodAllowsBody(op.method) && params.value.some(p => p.in === "body")) err(k("params"), `${op.method} không được có param in=body.`);
         const undocumented = params.value.filter(p => !p.description?.trim()).length;
         if (undocumented) warnings.push({ key: k("params"), opId: op.id, message: `${undocumented} param chưa có mô tả.` });
         if (methodAllowsBody(op.method) && params.value.length === 0) warnings.push({ key: k("params"), opId: op.id, message: `${op.method} nhưng chưa khai báo param nào.` });
-      }
-      if (methodAllowsBody(op.method)) {
-        const body = parseBody(op.bodyJson);
-        if (!body.ok) err(k("body"), body.error);
-        else if (body.value?.kind === "text" && params.ok && !params.value.some(p => p.name === (body.value as { from: string }).from)) {
-          err(k("body"), `Body "from" phải là tên một param.`);
-        }
       }
       const resp = parseResponse(op.responseJson);
       if (!resp.ok) err(k("response"), resp.error);
@@ -337,9 +330,10 @@ export function buildPayload(form: KitForm, { mask = true } = {}): KitPayload {
   }
   base.operations = form.operations.map(op => {
     const params = parseParams(op.paramsJson);
-    const body = methodAllowsBody(op.method) ? parseBody(op.bodyJson) : { ok: true as const, value: null };
     const resp = parseResponse(op.responseJson);
-    const b = body.ok ? body.value : null;
+    // No body editor: the request body is built from the in=body parameters (JSON).
+    const bodyParams = params.ok && methodAllowsBody(op.method) ? params.value.filter(p => p.in === "body") : [];
+    const b: Body | null = bodyParams.length ? { kind: "json", shape: Object.fromEntries(bodyParams.map(p => [p.name, `{${p.name}}`])) } : null;
     return {
       name: op.name.trim(), displayName: op.displayName.trim(), description: op.description.trim(),
       method: op.method, path: op.path.trim(), risk: RISK[op.method],

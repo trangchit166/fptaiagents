@@ -72,11 +72,10 @@ describe("validation", () => {
     expect(e[`op.${b.id}.path`]).toMatch(/\?/);
     expect(e[`op.${c.id}.params`]).toBe("GET không được có param in=body.");
     const e2 = errs({ ...f, operations: [{ ...b, path: "/orders/{order_id}/{line}" }, { ...a, paramsJson: pretty([{ name: "id", in: "path", type: "string" }]) }] });
-    expect(e2[`op.${b.id}.params`]).toBe("Path có {line} chưa có trong Params.");
+    expect(e2[`op.${b.id}.params`]).toBe("Path có {line} chưa có trong Parameters.");
     expect(e2[`op.${a.id}.params`]).toMatch(/không có trong path/);
-    const e3 = errs({ ...f, operations: [{ ...a, paramsJson: "[{" }, { ...c, bodyJson: '{"kind":"xml"}' }, { ...b, responseJson: '{"kind":"html"}' }] });
+    const e3 = errs({ ...f, operations: [{ ...a, paramsJson: "[{" }, { ...b, responseJson: '{"kind":"html"}' }] });
     expect(e3[`op.${a.id}.params`]).toMatch(/JSON không hợp lệ/);
-    expect(e3[`op.${c.id}.body`]).toMatch(/kind/);
     expect(e3[`op.${b.id}.response`]).toMatch(/Response/);
   });
 
@@ -159,5 +158,14 @@ describe("OpenAPI import", () => {
     expect(r.authType).toBe("oauth_manual");
     expect(r.oauth).toMatchObject({ authorizeUrl: "https://a/auth", tokenUrl: "https://a/token", scopes: "read" });
     expect(uid()).toBeTruthy();
+  });
+});
+
+describe("body from in=body parameters", () => {
+  it("builds a JSON body from the in=body parameters, none for GET", () => {
+    const f = sampleForm();
+    const ops = buildPayload({ ...f, operations: f.operations.map(o => ({ ...o, bodyJson: "" })) }).operations!;
+    expect(ops[2]).toMatchObject({ bodyType: "json", body: { kind: "json", shape: { sku: "{sku}", qty: "{qty}" } } });
+    expect(ops[0].bodyType).toBe("none");
   });
 });

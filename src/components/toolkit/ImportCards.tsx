@@ -21,8 +21,8 @@ const MAPPING: [string, string][] = [
   ["paths[p][method]", "Một operation"],
   ["operationId", "Tên snake_case (không có thì method_path)"],
   ["summary + description", "Mô tả cho model"],
-  ["path / query params", "Params; header / cookie params bị bỏ qua kèm cảnh báo"],
-  ["requestBody application/json properties", "Params in=body, Body kind json"],
+  ["path / query params", "Parameters; header / cookie params bị bỏ qua kèm cảnh báo"],
+  ["requestBody application/json properties", "Parameters in=body (gửi trong body JSON)"],
   ["$ref", "Được resolve; object lồng nhau thành một param type=object"],
 ];
 
@@ -85,7 +85,7 @@ function ImportPreview({ result, onCancel, onApply }: { result: ImportResult; on
               <TableHead>Path</TableHead>
               <TableHead>Tên tool</TableHead>
               <TableHead>Mô tả</TableHead>
-              <TableHead className="text-right">Params</TableHead>
+              <TableHead className="text-right">Parameters</TableHead>
               <TableHead>Cảnh báo</TableHead>
             </TableRow>
           </TableHeader>

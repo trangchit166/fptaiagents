@@ -10,7 +10,7 @@ import {
   ErrorText, Eyebrow, FieldLabel, Hint, Icon, JsonField, MethodBadge, SectionCard, SmallBadge, useField,
 } from "./parts";
 import {
-  METHODS, bodyFromParams, joinUrl, methodAllowsBody, missingPathParams, pretty, uid,
+  METHODS, joinUrl, missingPathParams, pretty, uid,
   withPathParamsAdded, type HttpMethod, type Issue, type Operation,
 } from "./model";
 
@@ -38,8 +38,7 @@ function OperationBody({ op, kitKey, baseUrl, onChange }: { op: Operation; kitKe
   const desc = useField(k("description"));
   const descLen = op.description.trim().length;
   const missing = missingPathParams(op);
-  const bodyAllowed = methodAllowsBody(op.method);
-  const fmt = (field: "paramsJson" | "bodyJson" | "responseJson") => {
+  const fmt = (field: "paramsJson" | "responseJson") => {
     try { set({ [field]: pretty(JSON.parse(op[field])) } as Partial<Operation>); } catch { /* leave as is; the error shows below */ }
   };
 
@@ -116,27 +115,19 @@ function OperationBody({ op, kitKey, baseUrl, onChange }: { op: Operation; kitKe
       </div>
 
       <div>
-        <Eyebrow>Params · Body · Response</Eyebrow>
+        <Eyebrow>Parameters · Response</Eyebrow>
         {missing.length > 0 && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2.5 text-sm">
-            <span>Path có <code className="font-mono">{`{${missing.join("}, {")}}`}</code> chưa có trong Params.</span>
-            <Button type="button" variant="outline" size="sm" onClick={() => onChange(withPathParamsAdded(op))}>Thêm vào Params</Button>
+            <span>Path có <code className="font-mono">{`{${missing.join("}, {")}}`}</code> chưa có trong Parameters.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => onChange(withPathParamsAdded(op))}>Thêm vào Parameters</Button>
           </div>
         )}
         <div className="space-y-5">
           <JsonField
-            id={`${op.id}-params`} label="Params (JSON)" value={op.paramsJson} fieldKey={k("params")} rows={8}
+            id={`${op.id}-params`} label="Parameters (JSON)" value={op.paramsJson} fieldKey={k("params")} rows={8}
             onChange={v => set({ paramsJson: v })} onFormat={() => fmt("paramsJson")}
             placeholder='[{"name": "order_id", "in": "path", "type": "string", "required": true, "description": "…"}]'
-            hint={<>Mảng các param: <code className="font-mono">name</code>, <code className="font-mono">in</code> (path | query | body), <code className="font-mono">type</code> (string | integer | number | boolean | array | object), <code className="font-mono">required</code>, <code className="font-mono">description</code>, <code className="font-mono">default</code>, <code className="font-mono">enum</code>. Để trống thì hệ thống tự thêm một param <code className="font-mono">query: string</code>.</>}
-          />
-          <JsonField
-            id={`${op.id}-body`} label="Body (JSON)" badge={<SmallBadge>Khi có body</SmallBadge>} value={bodyAllowed ? op.bodyJson : ""} fieldKey={k("body")} rows={5}
-            onChange={v => set({ bodyJson: v })} onFormat={() => fmt("bodyJson")} disabled={!bodyAllowed}
-            disabledNote={`${op.method} không gửi body.`}
-            placeholder='{"kind": "json", "shape": {"sku": "{sku}"}}'
-            extra={<Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={!bodyAllowed} onClick={() => { const b = bodyFromParams(op); if (b) set({ bodyJson: b }); }}>Tạo từ params</Button>}
-            hint={<><code className="font-mono">{'{"kind": "json" | "form" | "text", "shape": {…}}'}</code>; với text: <code className="font-mono">{'{"kind": "text", "from": "<tên param>"}'}</code>. Để trống nghĩa là không có body.</>}
+            hint={<>Mảng các parameter: <code className="font-mono">name</code>, <code className="font-mono">in</code> (path | query | body), <code className="font-mono">type</code> (string | integer | number | boolean | array | object), <code className="font-mono">required</code>, <code className="font-mono">description</code>, <code className="font-mono">default</code>, <code className="font-mono">enum</code>. Parameter <code className="font-mono">in: body</code> được gửi trong body JSON. Để trống thì hệ thống tự thêm một parameter <code className="font-mono">query: string</code>.</>}
           />
           <JsonField
             id={`${op.id}-response`} label="Response (JSON)" value={op.responseJson} fieldKey={k("response")} rows={2}

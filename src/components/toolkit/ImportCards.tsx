@@ -8,40 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErrorText, Icon, MethodBadge, SectionCard } from "./parts";
-import { formFromPayload, samplePayloadText, type KitForm } from "./model";
+import type { KitForm } from "./model";
 import { parseSpec, SAMPLE_OPENAPI, type ImportResult } from "./openapi";
-
-/* ───────────── Dán JSON ───────────── */
-
-export function PasteJsonCard({ onApply }: { onApply: (form: KitForm) => void }) {
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string>();
-  const analyse = () => {
-    const r = formFromPayload(text);
-    if (!r.ok) { setError(r.error); return; }
-    setError(undefined);
-    onApply(r.value);
-  };
-  return (
-    <SectionCard title="Dán JSON" subtitle="Dùng đúng cấu trúc payload tạo kit, để copy/paste và export lại được.">
-      <Textarea
-        value={text}
-        onChange={e => { setText(e.target.value); setError(undefined); }}
-        rows={18}
-        spellCheck={false}
-        aria-label="Payload JSON"
-        aria-invalid={!!error}
-        placeholder='{"name": "…", "baseUrl": "https://…", "authType": "api_key", "operations": […]}'
-        className="font-mono text-xs leading-relaxed"
-      />
-      <ErrorText>{error}</ErrorText>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button type="button" onClick={analyse} disabled={!text.trim()}>Phân tích</Button>
-        <Button type="button" variant="outline" onClick={() => { setText(samplePayloadText()); setError(undefined); }}>Dán payload mẫu</Button>
-      </div>
-    </SectionCard>
-  );
-}
 
 /* ───────────── Import OpenAPI / Swagger ───────────── */
 
@@ -138,7 +106,7 @@ function ImportPreview({ result, onCancel, onApply }: { result: ImportResult; on
       </div>
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>Hủy</Button>
-        <Button type="button" onClick={apply} disabled={!selected.size}>Đưa {selected.size} operation vào form</Button>
+        <Button type="button" onClick={apply} disabled={!selected.size}>Tiếp tục với {selected.size} operation</Button>
       </div>
     </SectionCard>
   );

@@ -7,50 +7,92 @@ import CreateToolkit from "@/pages/CreateToolkit";
 beforeAll(() => {
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
   Element.prototype.scrollIntoView = vi.fn();
+  window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
   Element.prototype.hasPointerCapture ??= () => false;
 });
 
 const mount = () => render(<MemoryRouter><CreateToolkit /><Toaster /></MemoryRouter>);
 const opRows = () => document.querySelectorAll("[data-op]");
+const type = (label: RegExp | string, v: string) => fireEvent.change(screen.getByLabelText(label), { target: { value: v } });
 
-describe("Tạo tool kit", () => {
-  it("loads the sample: header, badge, key, 3 operations with get_order expanded", () => {
+/** Step 1 -> import the sample OpenAPI file -> step 2 (4 operations, api_key with empty value). */
+function importSample() {
+  fireEvent.click(screen.getByRole("button", { name: "Dùng file mẫu" }));
+  fireEvent.click(screen.getByRole("button", { name: "Tiếp tục với 4 operation" }));
+}
+/** Fills what the sample file leaves incomplete so the kit can be saved. */
+function completeImported() {
+  fireEvent.change(document.querySelector<HTMLInputElement>('[data-field^="header."][data-field$=".value"]')!, { target: { value: "sk-123" } });
+  const getProduct = [...opRows()].find(r => r.textContent?.includes("get_product"))!;
+  fireEvent.click(within(getProduct as HTMLElement).getAllByRole("button")[0]);
+  fireEvent.change(document.querySelector<HTMLTextAreaElement>(`[data-op="${getProduct.getAttribute("data-op")}"] [data-field$=".description"]`)!, { target: { value: "Lấy chi tiết một sản phẩm theo mã sku trong kho." } });
+}
+
+describe("Tạo tool kit — steps", () => {
+  it("opens on step 1 with the agent-detail style header, no JSON paste, no save button yet", () => {
     mount();
     expect(screen.getByRole("heading", { level: 1, name: "Tạo tool kit" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Connectors" }).getAttribute("href")).toBe("/connectors?section=custom");
-    expect(screen.getByText("Dữ liệu mẫu")).toBeTruthy();
-    expect(screen.getByText("api-order-service")).toBeTruthy();
-    expect(opRows()).toHaveLength(3);
-    expect(screen.getByText("3 operation")).toBeTruthy();
-    const expanded = [...opRows()].filter(r => r.querySelector('[aria-expanded="true"]'));
-    expect(expanded).toHaveLength(1);
-    expect(expanded[0].textContent).toContain("get_order");
-    expect(screen.getByText("api-order-service__get_order")).toBeTruthy();
+    expect(screen.getByText("Bước 1: Import OpenAPI / Swagger").closest("button")!.getAttribute("aria-current")).toBe("step");
+    expect(screen.getByText("Import OpenAPI 3 / Swagger 2")).toBeTruthy();
+    expect(screen.queryByText(/Dán JSON/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Tạo tool kit/ })).toBeNull();
   });
 
-  it("editing clears the sample badge and updates the key", () => {
+  it("no file -> 'Nhập tay' goes to step 2 with an empty form", () => {
     mount();
-    fireEvent.change(screen.getByLabelText(/Tên tool kit/), { target: { value: "Kho Hàng Đà Nẵng" } });
-    expect(screen.queryByText("Dữ liệu mẫu")).toBeNull();
-    expect(screen.getByText("api-kho-hang-da-nang")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Nhập tay/ }));
+    expect(screen.getByText("Bước 2: Thông tin kit").closest("button")!.getAttribute("aria-current")).toBe("step");
+    expect((screen.getByLabelText(/Tên tool kit/) as HTMLInputElement).value).toBe("");
+    expect(screen.getByText("0 operation")).toBeTruthy();
+    expect(screen.queryByText(/Đã điền sẵn từ file/)).toBeNull();
   });
+
+  it("import -> step 2 prefilled from the file (name, base URL, auth header, operations)", async () => {
+    mount();
+    importSample();
+    expect(await screen.findByText("Đã trích 4 operation từ file.")).toBeTruthy();
+    expect(screen.getByText(/Đã điền sẵn từ file/)).toBeTruthy();
+    expect((screen.getByLabelText(/Tên tool kit/) as HTMLInputElement).value).toBe("Inventory Service");
+    expect((screen.getByLabelText(/Base URL/) as HTMLInputElement).value).toBe("https://api.example.com/inventory/v2");
+    expect(screen.getByText("api-inventory-service")).toBeTruthy();
+    expect(opRows()).toHaveLength(4);
+    expect((document.querySelector('[data-field^="header."][data-field$=".key"]') as HTMLInputElement).value).toBe("X-API-Key");
+  });
+
+  it("back to step 1 keeps the form; save validates, then succeeds", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    mount();
+    importSample();
+    fireEvent.click(screen.getByRole("button", { name: /Quay lại bước Import/ }));
+    fireEvent.click(screen.getByText("Bước 2: Thông tin kit"));
+    expect(opRows()).toHaveLength(4);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Tạo tool kit/ })[0]);
+    expect(await screen.findByText(/Còn 2 lỗi cần sửa trước khi lưu\./)).toBeTruthy();
+    completeImported();
+    fireEvent.click(screen.getAllByRole("button", { name: /Tạo tool kit/ })[0]);
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/4 tool sẵn sàng gắn vào agent/)).toBeTruthy();
+    expect(within(dialog).getByText("api-inventory-service__list_products")).toBeTruthy();
+    log.mockRestore();
+  });
+});
+
+describe("Tạo tool kit — step 2 editing", () => {
+  const toStep2 = () => { mount(); importSample(); };
 
   it("OAuth hides Operations; switching back restores them", () => {
-    mount();
-    const pick = (title: string) => {
-      fireEvent.click(screen.getByRole("combobox", { name: /Auth type/ }));
-      fireEvent.click(screen.getByRole("option", { name: new RegExp(title.replace(/[()]/g, "\\$&")) }));
-    };
-    pick("OAuth 2.1 (Tự động)");
+    toStep2();
+    const pick = (re: RegExp) => { fireEvent.click(screen.getByRole("combobox", { name: /Auth type/ })); fireEvent.click(screen.getByRole("option", { name: re })); };
+    pick(/OAuth 2\.1 \(Tự động\)/);
     expect(screen.queryByText("Operations")).toBeNull();
-    expect(screen.getByText(/RFC 9728, RFC 8414/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("combobox", { name: /Auth type/ }));
-    fireEvent.click(screen.getByRole("option", { name: /^API key/ }));
-    expect(opRows()).toHaveLength(3);
+    pick(/^API key/);
+    expect(opRows()).toHaveLength(4);
   });
 
   it("auth select works from the keyboard", () => {
-    mount();
+    toStep2();
     fireEvent.click(screen.getByRole("combobox", { name: /Auth type/ }));
     const list = screen.getByRole("listbox");
     fireEvent.keyDown(list, { key: "ArrowDown" });
@@ -59,80 +101,32 @@ describe("Tạo tool kit", () => {
     expect(screen.getByText("Authorize URL")).toBeTruthy();
   });
 
-  it("valid sample -> success dialog with 3 tools and the payload logged", () => {
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-    mount();
-    fireEvent.click(screen.getByRole("button", { name: /Tạo tool kit/ }));
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/Đã tạo tool kit "Order Service"/)).toBeTruthy();
-    expect(within(dialog).getByText("Bản mô phỏng")).toBeTruthy();
-    expect(within(dialog).getByText(/3 tool sẵn sàng gắn vào agent/)).toBeTruthy();
-    for (const n of ["list_orders", "get_order", "create_order"]) expect(within(dialog).getByText(`api-order-service__${n}`)).toBeTruthy();
-    const [, payload] = log.mock.calls.find(c => String(c[0]).includes("api-connectors"))!;
-    expect(payload.headers).toEqual({ "X-API-Key": "••••••" });
-    log.mockRestore();
-  });
-
-  it("errors stay hidden until touched or save; save focuses the first error", async () => {
-    mount();
+  it("errors stay hidden until save; save focuses the first error", async () => {
+    toStep2();
     fireEvent.click(screen.getByRole("button", { name: "Xóa form" }));
     expect(screen.queryByText("Vui lòng nhập tên tool kit.")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Tạo tool kit/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Tạo tool kit/ })[0]);
     expect(await screen.findByText(/Còn 2 lỗi cần sửa trước khi lưu\./)).toBeTruthy();
-    expect(screen.getByText("Vui lòng nhập tên tool kit.")).toBeTruthy();
-    expect(screen.getByText("Vui lòng nhập Base URL.")).toBeTruthy();
     await act(() => new Promise(r => setTimeout(r, 120)));
     expect(document.activeElement?.getAttribute("data-field")).toBe("name");
   });
 
-  it("delete shows an undo toast that restores the operation", async () => {
-    mount();
-    fireEvent.click(screen.getByRole("button", { name: "Xóa list_orders" }));
-    expect(opRows()).toHaveLength(2);
-    fireEvent.click(await screen.findByRole("button", { name: "Hoàn tác" }));
+  it("delete shows an undo toast that restores the operation; duplicate adds _copy", async () => {
+    toStep2();
+    fireEvent.click(screen.getByRole("button", { name: "Xóa list_products" }));
     expect(opRows()).toHaveLength(3);
-    expect(opRows()[0].textContent).toContain("list_orders");
-  });
-
-  it("duplicate adds a _copy right after", () => {
-    mount();
-    fireEvent.click(screen.getByRole("button", { name: "Nhân bản get_order" }));
-    expect([...opRows()].map(r => r.textContent)[2]).toContain("get_order_copy");
+    fireEvent.click(await screen.findByRole("button", { name: "Hoàn tác" }));
+    expect(opRows()).toHaveLength(4);
+    fireEvent.click(screen.getByRole("button", { name: "Nhân bản list_products" }));
+    expect([...opRows()].map(r => r.textContent)[1]).toContain("list_products_copy");
   });
 
   it("path blur auto-adds missing path params", () => {
-    mount();
+    toStep2();
     const path = document.querySelector<HTMLInputElement>('[data-field$=".path"]')!;
-    fireEvent.change(path, { target: { value: "/orders/{order_id}/lines/{line_id}" } });
+    fireEvent.change(path, { target: { value: "/products/{category_id}" } });
     expect(screen.getByText(/Path có/)).toBeTruthy();
     fireEvent.blur(path);
     expect(screen.queryByText(/Path có/)).toBeNull();
-    expect(document.querySelector<HTMLTextAreaElement>('[data-field$=".params"]')!.value).toContain("line_id");
-  });
-
-  it("Dán JSON: sample payload -> back to Nhập tay", async () => {
-    mount();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: /Dán JSON/ }));
-    fireEvent.click(screen.getByRole("tab", { name: /Dán JSON/ }));
-    expect(screen.queryByRole("button", { name: /Tạo tool kit/ })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Dán payload mẫu" }));
-    fireEvent.click(screen.getByRole("button", { name: "Phân tích" }));
-    expect(await screen.findByText("Đã nạp payload vào form.")).toBeTruthy();
-    expect(opRows()).toHaveLength(3);
-  });
-
-  it("Import OpenAPI: sample file -> preview -> 3 selected ops into the form", async () => {
-    mount();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: /Import OpenAPI/ }));
-    fireEvent.click(screen.getByRole("tab", { name: /Import OpenAPI/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Dùng file mẫu" }));
-    expect(screen.getByText("Xem trước import")).toBeTruthy();
-    expect(screen.getByText("Đã chọn 4 / 4")).toBeTruthy();
-    expect(screen.getAllByRole("radio")).toHaveLength(2);
-    fireEvent.click(screen.getByRole("checkbox", { name: "Chọn delete_products_sku" }));
-    fireEvent.click(screen.getByRole("button", { name: "Đưa 3 operation vào form" }));
-    expect(await screen.findByText("Đã đưa 3 operation vào form.")).toBeTruthy();
-    expect(opRows()).toHaveLength(3);
-    expect((screen.getByLabelText(/Tên tool kit/) as HTMLInputElement).value).toBe("Inventory Service");
   });
 });

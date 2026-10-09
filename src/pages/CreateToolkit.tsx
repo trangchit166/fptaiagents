@@ -1,31 +1,24 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { PencilEdit02Icon, SourceCodeIcon, Upload04Icon, Tick02Icon, ArrowLeft01Icon, ApiIcon } from "@hugeicons/core-free-icons";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PencilEdit02Icon, Upload04Icon, Tick02Icon, ArrowLeft01Icon, ApiIcon } from "@hugeicons/core-free-icons";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ErrorText, FieldContext, FieldLabel, Hint, Icon, MethodBadge, SectionCard, SmallBadge, useField,
 } from "@/components/toolkit/parts";
 import AuthCard from "@/components/toolkit/AuthCard";
 import OperationsCard, { type OpStatus } from "@/components/toolkit/OperationsCard";
-import { OpenApiCard, PasteJsonCard } from "@/components/toolkit/ImportCards";
+import { OpenApiCard } from "@/components/toolkit/ImportCards";
 import {
-  buildPayload, emptyForm, emptyOperation, existingKitNames, isOAuth, kitKey, sampleForm, uid, validate,
+  buildPayload, emptyForm, emptyOperation, existingKitNames, isOAuth, kitKey, uid, validate,
   type KitForm, type KitPayload, type Operation,
 } from "@/components/toolkit/model";
 
-type Mode = "manual" | "json" | "openapi";
+type Step = 1 | 2;
 
-function initial() {
-  const form = sampleForm();
-  const getOrder = form.operations.find(o => o.name === "get_order");
-  return { form, expanded: new Set(getOrder ? [getOrder.id] : []) };
-}
 
 function KitInfoCard({ form, set }: { form: KitForm; set: (p: Partial<KitForm>) => void }) {
   const name = useField("name");
@@ -99,12 +92,52 @@ function SuccessDialog({ payload, kitKeyValue, onClose }: { payload: KitPayload;
   );
 }
 
+const STEPS: { n: Step; title: string; sub: string }[] = [
+  { n: 1, title: "Import OpenAPI / Swagger", sub: "Không có file thì chuyển sang nhập tay" },
+  { n: 2, title: "Thông tin kit", sub: "Kiểm tra, bổ sung rồi lưu" },
+];
+
+/** Two-step header: the current step uses primary, a finished step shows a check. */
+function Stepper({ step, onStep }: { step: Step; onStep: (s: Step) => void }) {
+  return (
+    <ol className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4" aria-label="Các bước">
+      {STEPS.map((s, i) => {
+        const active = s.n === step;
+        const done = s.n < step;
+        return (
+          <li key={s.n} className="flex items-center gap-3 sm:gap-4 min-w-0">
+            {i > 0 && <span className="hidden sm:block h-px w-10 bg-border shrink-0" aria-hidden="true" />}
+            <button
+              type="button"
+              onClick={() => onStep(s.n)}
+              aria-current={active ? "step" : undefined}
+              className="flex items-center gap-3 rounded-md text-left min-w-0 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm font-medium tabular-nums ${
+                active ? "border-primary bg-primary text-primary-foreground" : done ? "border-primary text-primary" : "text-muted-foreground"
+              }`}>
+                {done ? <Icon icon={Tick02Icon} /> : s.n}
+              </span>
+              <span className="min-w-0">
+                <span className={`block text-sm font-medium ${active ? "text-foreground" : "text-muted-foreground"}`}>Bước {s.n}: {s.title}</span>
+                <span className="block text-xs text-muted-foreground">{s.sub}</span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 /** "Tạo tool kit" — declare a list of REST operations; each one becomes a tool an agent can call. */
 export default function CreateToolkit() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("manual");
-  const [{ form, expanded }, setState] = useState(initial);
-  const [isSample, setIsSample] = useState(true);
+  // Step 1: import an OpenAPI / Swagger file (or skip). Step 2: kit info, auth and operations —
+  // prefilled from the file when one was imported — then "Tạo tool kit".
+  const [step, setStep] = useState<Step>(1);
+  const [{ form, expanded }, setState] = useState(() => ({ form: emptyForm(), expanded: new Set<string>() }));
+  const [importedFrom, setImportedFrom] = useState<{ name: string; count: number } | null>(null);
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
   const [created, setCreated] = useState<string[]>([]);
@@ -117,7 +150,7 @@ export default function CreateToolkit() {
     touch: (k: string) => setTouched(t => (t.has(k) ? t : new Set(t).add(k))),
   }), [validation, touched, submitted]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setForm = (fn: (f: KitForm) => KitForm) => { setState(s => ({ ...s, form: fn(s.form) })); setIsSample(false); };
+  const setForm = (fn: (f: KitForm) => KitForm) => setState(s => ({ ...s, form: fn(s.form) }));
   const set = (p: Partial<KitForm>) => setForm(f => ({ ...f, ...p }));
   const setExpanded = (fn: (e: Set<string>) => Set<string>) => setState(s => ({ ...s, expanded: fn(s.expanded) }));
   const reset = (next: KitForm, open: string[] = []) => {
@@ -205,12 +238,14 @@ export default function CreateToolkit() {
     });
   };
 
-  const applyImported = (next: KitForm, message: string) => {
-    reset(next);
-    setIsSample(false);
-    setMode("manual");
-    toast.success(message);
+  const goToStep2 = () => { setStep(2); window.scrollTo({ top: 0 }); };
+  const applyImported = (next: KitForm, count: number) => {
+    reset(next, next.operations[0] ? [next.operations[0].id] : []);
+    setImportedFrom({ name: next.name || "file", count });
+    goToStep2();
+    toast.success(`Đã trích ${count} operation từ file.`);
   };
+  const skipImport = () => { setImportedFrom(null); goToStep2(); };
 
   return (
     <FieldContext.Provider value={fieldCtx}>
@@ -227,11 +262,10 @@ export default function CreateToolkit() {
               <Icon icon={ApiIcon} />
             </div>
             <h1 className="font-semibold text-sm truncate">Tạo tool kit</h1>
-            {isSample && <Badge variant="secondary" className="rounded-sm font-medium shrink-0">Dữ liệu mẫu</Badge>}
           </div>
-          {mode === "manual" && (
+          {step === 2 && (
             <div className="ml-auto flex items-center gap-2 shrink-0">
-              <Button type="button" variant="ghost" size="sm" onClick={() => { reset(emptyForm()); setIsSample(false); }}>Xóa form</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => { reset(emptyForm()); setImportedFrom(null); }}>Xóa form</Button>
               <Button type="button" size="sm" onClick={save}><Icon icon={Tick02Icon} /> Tạo tool kit</Button>
             </div>
           )}
@@ -242,19 +276,31 @@ export default function CreateToolkit() {
             Khai báo danh sách REST API. Mỗi operation thành một tool mà agent gọi được, tên dạng <code className="font-mono text-foreground">&lt;key&gt;__&lt;tên op&gt;</code>
           </p>
 
-          {/* Segmented control, Vega style: muted track, active segment = background + shadow-sm. */}
-          <div className="overflow-x-auto">
-            <Tabs value={mode} onValueChange={v => setMode(v as Mode)}>
-              <TabsList className="h-9 w-fit rounded-lg bg-muted p-[3px] text-muted-foreground">
-                <TabsTrigger value="manual" className="h-full flex-none gap-1.5 rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-0"><Icon icon={PencilEdit02Icon} /> Nhập tay</TabsTrigger>
-                <TabsTrigger value="json" className="h-full flex-none gap-1.5 rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-0"><Icon icon={SourceCodeIcon} /> Dán JSON</TabsTrigger>
-                <TabsTrigger value="openapi" className="h-full flex-none gap-1.5 rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-0"><Icon icon={Upload04Icon} /> Import OpenAPI / Swagger</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <Stepper step={step} onStep={s => (s === 1 ? setStep(1) : goToStep2())} />
 
-          {mode === "manual" && (
+          {step === 1 && (
             <div className="space-y-4">
+              <OpenApiCard onApply={applyImported} />
+              <div className="flex flex-col gap-3 rounded-lg border border-dashed px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Không có file OpenAPI / Swagger?</p>
+                  <p className="text-sm text-muted-foreground">Bỏ qua bước này và tự khai báo thông tin kit cùng các operation.</p>
+                </div>
+                <Button type="button" variant="outline" onClick={skipImport}>
+                  <Icon icon={PencilEdit02Icon} /> Nhập tay
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              {importedFrom && (
+                <div className="flex items-start gap-2 rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
+                  <Icon icon={Upload04Icon} className="mt-0.5 shrink-0" />
+                  <span>Đã điền sẵn từ file <span className="font-medium text-foreground">{importedFrom.name}</span>: {importedFrom.count} operation. Kiểm tra lại rồi bấm "Tạo tool kit".</span>
+                </div>
+              )}
               <KitInfoCard form={form} set={set} />
               <AuthCard form={form} set={set} />
               {showOps && (
@@ -271,10 +317,14 @@ export default function CreateToolkit() {
                   onDelete={deleteOp}
                 />
               )}
+              <div className="flex items-center justify-between gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                  <Icon icon={ArrowLeft01Icon} /> Quay lại bước Import
+                </Button>
+                <Button type="button" onClick={save}><Icon icon={Tick02Icon} /> Tạo tool kit</Button>
+              </div>
             </div>
           )}
-          {mode === "json" && <PasteJsonCard onApply={f => applyImported(f, "Đã nạp payload vào form.")} />}
-          {mode === "openapi" && <OpenApiCard onApply={(f, n) => applyImported(f, `Đã đưa ${n} operation vào form.`)} />}
         </div>
       </div>
       {success && <SuccessDialog payload={success} kitKeyValue={kitKey(success.name)} onClose={() => setSuccess(null)} />}

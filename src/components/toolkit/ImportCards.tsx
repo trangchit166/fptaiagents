@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ArrowDown01Icon, FileUploadIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, FileUploadIcon, PencilEdit02Icon } from "@hugeicons/core-free-icons";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,7 +112,7 @@ function ImportPreview({ result, onCancel, onApply }: { result: ImportResult; on
   );
 }
 
-export function OpenApiCard({ onApply }: { onApply: (form: KitForm, count: number) => void }) {
+export function OpenApiCard({ onApply, onSkip }: { onApply: (form: KitForm, count: number) => void; onSkip?: () => void }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -134,7 +134,18 @@ export function OpenApiCard({ onApply }: { onApply: (form: KitForm, count: numbe
 
   return (
     <div className="space-y-4">
-      <SectionCard title="Import OpenAPI 3 / Swagger 2" subtitle="Hỗ trợ file JSON hoặc YAML. Mỗi path + method thành một operation.">
+      <SectionCard
+        title="Import OpenAPI 3 / Swagger 2"
+        subtitle="Hỗ trợ file JSON hoặc YAML. Mỗi path + method thành một operation."
+        actions={onSkip && (
+          <>
+            <span className="hidden md:inline text-sm text-muted-foreground">Không có file?</span>
+            <Button type="button" variant="outline" size="sm" onClick={onSkip}>
+              <Icon icon={PencilEdit02Icon} /> Nhập tay
+            </Button>
+          </>
+        )}
+      >
         <div
           role="button"
           tabIndex={0}

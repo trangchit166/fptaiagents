@@ -280,16 +280,7 @@ export default function CreateToolkit() {
 
           {step === 1 && (
             <div className="space-y-4">
-              <OpenApiCard onApply={applyImported} />
-              <div className="flex flex-col gap-3 rounded-lg border border-dashed px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium">Không có file OpenAPI / Swagger?</p>
-                  <p className="text-sm text-muted-foreground">Bỏ qua bước này và tự khai báo thông tin kit cùng các operation.</p>
-                </div>
-                <Button type="button" variant="outline" onClick={skipImport}>
-                  <Icon icon={PencilEdit02Icon} /> Nhập tay
-                </Button>
-              </div>
+              <OpenApiCard onApply={applyImported} onSkip={skipImport} />
             </div>
           )}
 

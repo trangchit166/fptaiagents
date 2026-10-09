@@ -19,6 +19,7 @@ import AddCustomApiToolModal from "@/components/configure/AddCustomApiToolModal"
 import { getAgent } from "@/components/configure/agentStore";
 import { useMyPermissions } from "@/pages/organization/useMyPermissions";
 import AgentResourceDetailModal from "@/components/configure/AgentResourceDetailModal";
+import ManageMcpConnectorDialog from "@/components/configure/ManageMcpConnectorDialog";
 import {
   isShared, ownershipTags,
   type OwnershipTag,
@@ -406,10 +407,11 @@ export default function WorkspaceConnectors() {
       )}
 
       {detailConnectorId && (
-        <AgentResourceDetailModal
-          agentId=""
-          target={{ kind: "connector", id: detailConnectorId }}
+        <ManageMcpConnectorDialog
+          connectorId={detailConnectorId}
+          canRemove={manages(customConnectorStore.get(detailConnectorId)?.ownerId)}
           onClose={() => setDetailConnectorId(null)}
+          onRemove={c => { setDetailConnectorId(null); setDeleteTarget(c); }}
           onChanged={refresh}
         />
       )}

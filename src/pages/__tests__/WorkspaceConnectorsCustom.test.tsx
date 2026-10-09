@@ -62,3 +62,34 @@ describe("Custom Connectors tab", () => {
     expect(screen.getByText("https://x.io/mcp")).toBeTruthy();
   });
 });
+
+describe("Manage MCP connector", () => {
+  it("opens from 'Quản lý' with Configure + Available permissions, Sync, Close/Remove", async () => {
+    await openCustomTab(true);
+    fireEvent.click(screen.getAllByRole("button", { name: /Thêm custom connector/ })[1]);
+    fireEvent.click(screen.getByRole("menuitem", { name: /MCP tùy chỉnh/ }));
+    const add = screen.getByRole("dialog");
+    fireEvent.change(within(add).getByLabelText("Tên"), { target: { value: "trang" } });
+    fireEvent.change(within(add).getByLabelText("URL"), { target: { value: "https://docs.langchain.com/mcp" } });
+    fireEvent.click(within(add).getByRole("button", { name: "Lưu server" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quản lý" }));
+    const d = screen.getByRole("dialog");
+    expect(within(d).getByText("trang")).toBeTruthy();
+    expect(within(d).getByText("Connected")).toBeTruthy();
+    expect(within(d).getByText("https://docs.langchain.com/mcp")).toBeTruthy();
+    expect(within(d).getByText("Docs by LangChain v1.0.0")).toBeTruthy();
+    expect(within(d).getByText("No authentication")).toBeTruthy();
+    expect(within(d).getByRole("button", { name: "Sync" })).toBeTruthy();
+    const permTab = within(d).getByRole("tab", { name: "Available permissions (3)" });
+    fireEvent.mouseDown(permTab); fireEvent.click(permTab);
+    expect(within(d).getByText("Search documentation")).toBeTruthy();
+    expect(within(d).getAllByText("Auto")).toHaveLength(2);
+    expect(within(d).getAllByText("Ask")).toHaveLength(1);
+    fireEvent.click(within(d).getByRole("button", { name: "Remove" }));
+    // Hands off to the page's own delete confirmation.
+    const confirm = await screen.findByRole("alertdialog");
+    expect(confirm.textContent).toContain("trang");
+    expect(screen.queryByText("Manage the MCP server and review the tools it grants to agents.")).toBeNull();
+  });
+});

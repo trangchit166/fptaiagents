@@ -9,6 +9,7 @@
 import { loadMap, saveMap } from "@/lib/sessionPersist";
 import { CURRENT_USER } from "@/components/knowledge/knowledgeBaseStore";
 import type { Sharing } from "./customConnectorSharing";
+import { discoverMcp, needsAuthorization, type McpTool } from "./mcpDiscovery";
 
 export type ConnectorAuthType = "none" | "static_headers" | "oauth_auto" | "oauth_manual";
 
@@ -37,6 +38,10 @@ export interface CustomConnector {
   headers: ConnectorHeader[];
   /** oauth_auto / oauth_manual only */
   oauth?: ConnectorOAuth;
+  /** What the last connect / "Sync" learned from the server (see mcpDiscovery.ts). */
+  serverInfo?: { name: string; version: string };
+  tools?: McpTool[];
+  lastSyncedAt?: number;
   ownerId: string;
   ownerName: string;
   sharing: Sharing;
@@ -150,7 +155,26 @@ export const customConnectorStore = {
     };
     store.set(id, c);
     persist();
-    return c;
+    return this.sync(id) ?? c;
+  },
+  /** Re-reads the server's name/version and tool list ("Sync"). Keeps the permission a tool already
+   * had, so syncing never silently loosens an Ask back to Auto. OAuth servers expose no tools until
+   * authorised, so they sync to an empty list. */
+  sync(id: string): CustomConnector | undefined {
+    const cur = store.get(id);
+    if (!cur) return undefined;
+    const found = discoverMcp(cur.url);
+    const prev = new Map((cur.tools ?? []).map(t => [t.name, t.permission]));
+    const tools = needsAuthorization(cur) ? [] : found.tools.map(t => ({ ...t, permission: prev.get(t.name) ?? t.permission }));
+    const next = { ...cur, serverInfo: found.server, tools, lastSyncedAt: Date.now() };
+    store.set(id, next);
+    persist();
+    return next;
+  },
+  /** First sync on demand — connectors created before discovery existed have no tools yet. */
+  ensureSynced(id: string): CustomConnector | undefined {
+    const cur = store.get(id);
+    return cur && !cur.lastSyncedAt ? this.sync(id) : cur;
   },
   updateSharing(id: string, sharing: Sharing) {
     const cur = store.get(id);

@@ -241,7 +241,6 @@ export default function CreateToolkit() {
               {mode === "manual" && (
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <Button type="button" variant="ghost" onClick={() => { reset(emptyForm()); setIsSample(false); }}>Xóa form</Button>
-                  <Button type="button" variant="outline" onClick={() => { const s = initial(); reset(s.form, [...s.expanded]); setIsSample(true); }}>Nạp lại mẫu</Button>
                   <Button type="button" onClick={save}><Icon icon={Tick02Icon} /> Tạo tool kit</Button>
                 </div>
               )}

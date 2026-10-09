@@ -18,6 +18,7 @@ import AgentScaffold from "./pages/AgentScaffold";
 import Inventor from "./pages/Inventor";
 import TaskEditor from "./pages/TaskEditor";
 import ToolBuilder from "./pages/ToolBuilder";
+import CreateToolkit from "./pages/CreateToolkit";
 import ConversationTrace from "./pages/ConversationTrace";
 import OrgGeneral from "./pages/organization/General";
 import OrgStructure from "./pages/organization/Structure";
@@ -138,6 +139,7 @@ const App = () => (
               <Route path="/external-agents/:id" element={<ExternalAgentDetail />} />
             </Route>
             <Route path="/inventor" element={<RequireAuth><Inventor /></RequireAuth>} />
+            <Route path="/connectors/custom/toolkits/new" element={<RequireAuth><CreateToolkit /></RequireAuth>} />
             <Route path="/agents/:id/tools/new" element={<RequireAuth><ToolBuilder /></RequireAuth>} />
             <Route path="/agents/:id/tools/:toolId" element={<RequireAuth><ToolBuilder /></RequireAuth>} />
             <Route path="/agents/:id/trace/:conversationId" element={<RequireAuth><ConversationTrace /></RequireAuth>} />

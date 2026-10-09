@@ -58,7 +58,7 @@ function SecretField({ value, onChange, placeholder }: { value: string; onChange
 function previewUrl(url: string, params: ApiParam[]): string {
   return params
     .filter(p => p.location === "path" && p.name.trim())
-    .reduce((u, p) => u.replaceAll(`{${p.name.trim()}}`, `<${p.name.trim()}>`), url);
+    .reduce((u, p) => u.split(`{${p.name.trim()}}`).join(`<${p.name.trim()}>`), url);
 }
 
 /** "Thêm API Tool" — create/edit form for a Custom API Tool (a plain REST endpoint an Agent can

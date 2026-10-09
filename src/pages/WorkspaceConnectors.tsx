@@ -1,8 +1,9 @@
 import { useState, useMemo, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { SpaceDeleteDialog, performSpaceDelete, spaceDeleteLabel, SpaceUnshareDialog, notifySpaceOwner, useSpaceActor } from "@/components/governance/spaceDelete";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { Search, CheckCircle2, ChevronRight, ChevronDown, Plug, MoreVertical, AlertTriangle, X, Rocket, Globe, BarChart3, Plus, Server, type LucideIcon } from "lucide-react";
+import { Search, CheckCircle2, ChevronRight, ChevronDown, Plug, MoreVertical, AlertTriangle, X, Rocket, Globe, BarChart3, Plus, Server, Layers, type LucideIcon } from "lucide-react";
 import RequestPublishModal from "@/components/governance/RequestPublishModal";
 import { governanceStore } from "@/components/governance/governanceStore";
 import { StatusBadge } from "@/components/governance/governanceUi";
@@ -148,7 +149,9 @@ const MARKETPLACE_TABS: { key: Tab; label: string }[] = [
 /* ─── Main page ──────────────────────────────────────── */
 export default function WorkspaceConnectors() {
   const access = useGroupAccess("connectors");
-  const [section, setSection] = useState<Section>("marketplace");
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [section, setSection] = useState<Section>(searchParams.get("section") === "custom" ? "custom" : "marketplace");
   const [tab, setTab]     = useState<Tab>("all");
   const [query, setQuery] = useState("");
 
@@ -344,6 +347,7 @@ export default function WorkspaceConnectors() {
               disabledReason="Vai trò của bạn chưa có quyền tạo connector."
               onPickMcp={() => canCreateConnector && setShowAddCustom(true)}
               onPickApiTool={() => canCreateConnector && setShowAddApiTool(true)}
+              onPickToolkit={() => canCreateConnector && navigate("/connectors/custom/toolkits/new")}
             />
           </div>
 
@@ -359,6 +363,7 @@ export default function WorkspaceConnectors() {
                 disabledReason="Vai trò của bạn chưa có quyền tạo connector."
                 onPickMcp={() => canCreateConnector && setShowAddCustom(true)}
                 onPickApiTool={() => canCreateConnector && setShowAddApiTool(true)}
+              onPickToolkit={() => canCreateConnector && navigate("/connectors/custom/toolkits/new")}
               />
             </div>
           ) : customFiltered.length === 0 ? (
@@ -742,13 +747,14 @@ function CustomConnectorCard({ connector: c, isMine, onOpen, onEdit, onShare, on
 
 /** One "+ Thêm custom connector" button that asks which kind to add — MCP server or API Tool —
  * instead of two sibling buttons that read as unrelated actions. */
-function AddCustomConnectorMenu({ onPickMcp, onPickApiTool, disabled, disabledReason }: {
-  onPickMcp: () => void; onPickApiTool: () => void; disabled?: boolean; disabledReason?: string;
+function AddCustomConnectorMenu({ onPickMcp, onPickApiTool, onPickToolkit, disabled, disabledReason }: {
+  onPickMcp: () => void; onPickApiTool: () => void; onPickToolkit: () => void; disabled?: boolean; disabledReason?: string;
 }) {
   const [open, setOpen] = useState(false);
   const options = [
     { icon: Server, label: "MCP tùy chỉnh", sub: "Kết nối một MCP server để cấp các tool của nó cho agent.", onPick: onPickMcp },
     { icon: Globe, label: "API Tool", sub: "Định nghĩa một REST API (URL, method, xác thực, tham số) để Agent gọi.", onPick: onPickApiTool },
+    { icon: Layers, label: "Tool kit (REST API)", sub: "Khai báo nhiều REST API trên một base URL; mỗi operation thành một tool.", onPick: onPickToolkit },
   ];
   return (
     <div className="relative shrink-0" onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false); }}>

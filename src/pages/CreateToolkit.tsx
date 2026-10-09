@@ -248,15 +248,15 @@ export default function CreateToolkit() {
             </div>
           </header>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          {/* Segmented control, Vega style: muted track, active segment = background + shadow-sm. */}
+          <div className="overflow-x-auto">
             <Tabs value={mode} onValueChange={v => setMode(v as Mode)}>
-              <TabsList className="h-auto flex-wrap justify-start">
-                <TabsTrigger value="manual" className="gap-1.5"><Icon icon={PencilEdit02Icon} size={15} /> Nhập tay</TabsTrigger>
-                <TabsTrigger value="json" className="gap-1.5"><Icon icon={SourceCodeIcon} size={15} /> Dán JSON</TabsTrigger>
-                <TabsTrigger value="openapi" className="gap-1.5"><Icon icon={Upload04Icon} size={15} /> Import OpenAPI / Swagger</TabsTrigger>
+              <TabsList className="h-9 w-fit rounded-lg bg-muted p-[3px] text-muted-foreground">
+                <TabsTrigger value="manual" className="h-full flex-none gap-1.5 rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-0"><Icon icon={PencilEdit02Icon} /> Nhập tay</TabsTrigger>
+                <TabsTrigger value="json" className="h-full flex-none gap-1.5 rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-0"><Icon icon={SourceCodeIcon} /> Dán JSON</TabsTrigger>
+                <TabsTrigger value="openapi" className="h-full flex-none gap-1.5 rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-0"><Icon icon={Upload04Icon} /> Import OpenAPI / Swagger</TabsTrigger>
               </TabsList>
             </Tabs>
-            <p className="text-xs text-muted-foreground">Import xong vẫn quay về đây để chỉnh và lưu.</p>
           </div>
 
           {mode === "manual" && (

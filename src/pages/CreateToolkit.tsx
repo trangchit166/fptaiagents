@@ -216,7 +216,7 @@ export default function CreateToolkit() {
 
   return (
     <FieldContext.Provider value={fieldCtx}>
-      <div className="min-h-screen bg-muted/50">
+      <div className="min-h-screen bg-background">
         <div className="px-4 md:px-8 py-6 space-y-5">
           <header className="space-y-3">
             <Breadcrumb>

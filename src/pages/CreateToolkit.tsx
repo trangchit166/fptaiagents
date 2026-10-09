@@ -1,10 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { PencilEdit02Icon, SourceCodeIcon, Upload04Icon, Tick02Icon } from "@hugeicons/core-free-icons";
-import {
-  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+import { PencilEdit02Icon, SourceCodeIcon, Upload04Icon, Tick02Icon, ArrowLeft01Icon, ApiIcon } from "@hugeicons/core-free-icons";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,6 +101,7 @@ function SuccessDialog({ payload, kitKeyValue, onClose }: { payload: KitPayload;
 
 /** "Tạo tool kit" — declare a list of REST operations; each one becomes a tool an agent can call. */
 export default function CreateToolkit() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("manual");
   const [{ form, expanded }, setState] = useState(initial);
   const [isSample, setIsSample] = useState(true);
@@ -217,35 +215,32 @@ export default function CreateToolkit() {
   return (
     <FieldContext.Provider value={fieldCtx}>
       <div className="min-h-screen bg-background">
-        <div className="px-4 md:px-8 py-6 space-y-5">
-          <header className="space-y-3">
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem><BreadcrumbLink asChild><Link to="/connectors">Connectors</Link></BreadcrumbLink></BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem><BreadcrumbLink asChild><Link to="/connectors?section=custom">Custom</Link></BreadcrumbLink></BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem><BreadcrumbPage>Tạo tool kit</BreadcrumbPage></BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-semibold tracking-tight">Tạo tool kit</h1>
-                  {isSample && <Badge variant="secondary" className="rounded-sm font-medium">Dữ liệu mẫu</Badge>}
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Khai báo danh sách REST API. Mỗi operation thành một tool mà agent gọi được, tên dạng <code className="font-mono text-foreground">&lt;key&gt;__&lt;tên op&gt;</code>
-                </p>
-              </div>
-              {mode === "manual" && (
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <Button type="button" variant="ghost" onClick={() => { reset(emptyForm()); setIsSample(false); }}>Xóa form</Button>
-                  <Button type="button" onClick={save}><Icon icon={Tick02Icon} /> Tạo tool kit</Button>
-                </div>
-              )}
+        {/* Top bar — same pattern as the Agent detail page: back, parent link / icon tile + title, actions on the right. */}
+        <div className="sticky top-0 z-20 h-14 border-b bg-surface flex items-center gap-3 px-4">
+          <Button type="button" variant="ghost" size="icon" aria-label="Quay lại Custom Connectors" onClick={() => navigate("/connectors?section=custom")} className="h-8 w-8 shrink-0 text-muted-foreground">
+            <Icon icon={ArrowLeft01Icon} />
+          </Button>
+          <Link to="/connectors?section=custom" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">Connectors</Link>
+          <span className="hidden sm:inline text-sm text-muted-foreground/50 shrink-0" aria-hidden="true">/</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-md bg-muted border flex items-center justify-center shrink-0 text-muted-foreground">
+              <Icon icon={ApiIcon} />
             </div>
-          </header>
+            <h1 className="font-semibold text-sm truncate">Tạo tool kit</h1>
+            {isSample && <Badge variant="secondary" className="rounded-sm font-medium shrink-0">Dữ liệu mẫu</Badge>}
+          </div>
+          {mode === "manual" && (
+            <div className="ml-auto flex items-center gap-2 shrink-0">
+              <Button type="button" variant="ghost" size="sm" onClick={() => { reset(emptyForm()); setIsSample(false); }}>Xóa form</Button>
+              <Button type="button" size="sm" onClick={save}><Icon icon={Tick02Icon} /> Tạo tool kit</Button>
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 md:px-8 py-6 space-y-5">
+          <p className="text-sm text-muted-foreground">
+            Khai báo danh sách REST API. Mỗi operation thành một tool mà agent gọi được, tên dạng <code className="font-mono text-foreground">&lt;key&gt;__&lt;tên op&gt;</code>
+          </p>
 
           {/* Segmented control, Vega style: muted track, active segment = background + shadow-sm. */}
           <div className="overflow-x-auto">

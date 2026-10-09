@@ -17,6 +17,7 @@ describe("Tạo tool kit", () => {
   it("loads the sample: header, badge, key, 3 operations with get_order expanded", () => {
     mount();
     expect(screen.getByRole("heading", { level: 1, name: "Tạo tool kit" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Connectors" }).getAttribute("href")).toBe("/connectors?section=custom");
     expect(screen.getByText("Dữ liệu mẫu")).toBeTruthy();
     expect(screen.getByText("api-order-service")).toBeTruthy();
     expect(opRows()).toHaveLength(3);

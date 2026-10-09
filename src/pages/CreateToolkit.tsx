@@ -272,9 +272,6 @@ export default function CreateToolkit() {
         </div>
 
         <div className="px-4 md:px-8 py-6 space-y-5">
-          <p className="text-sm text-muted-foreground">
-            Khai báo danh sách REST API. Mỗi operation thành một tool mà agent gọi được, tên dạng <code className="font-mono text-foreground">&lt;key&gt;__&lt;tên op&gt;</code>
-          </p>
 
           <Stepper step={step} onStep={s => (s === 1 ? setStep(1) : goToStep2())} />
 

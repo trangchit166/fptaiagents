@@ -308,11 +308,10 @@ export default function CreateToolkit() {
                   onDelete={deleteOp}
                 />
               )}
-              <div className="flex items-center justify-between gap-2 pt-2">
+              <div className="pt-2">
                 <Button type="button" variant="outline" onClick={() => setStep(1)}>
                   <Icon icon={ArrowLeft01Icon} /> Quay lại bước Import
                 </Button>
-                <Button type="button" onClick={save}><Icon icon={Tick02Icon} /> Tạo tool kit</Button>
               </div>
             </div>
           )}

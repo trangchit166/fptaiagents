@@ -167,7 +167,6 @@ export default function WorkspaceConnectors() {
   const [deleteTarget, setDeleteTarget] = useState<CustomConnector | null>(null);
   // API Tool — a separate "Custom Tool" kind (a single REST endpoint definition) alongside
   // Custom MCP connectors above, with the same sharing / in-use rules.
-  const [showAddApiTool, setShowAddApiTool] = useState(false);
   const [shareApiToolTarget, setShareApiToolTarget] = useState<CustomApiTool | null>(null);
   const { can } = useMyPermissions();
   const canCreateConnector = can("connectors.create");
@@ -346,7 +345,6 @@ export default function WorkspaceConnectors() {
               disabled={!canCreateConnector}
               disabledReason="Vai trò của bạn chưa có quyền tạo connector."
               onPickMcp={() => canCreateConnector && setShowAddCustom(true)}
-              onPickApiTool={() => canCreateConnector && setShowAddApiTool(true)}
               onPickToolkit={() => canCreateConnector && navigate("/connectors/custom/toolkits/new")}
             />
           </div>
@@ -362,7 +360,6 @@ export default function WorkspaceConnectors() {
                 disabled={!canCreateConnector}
                 disabledReason="Vai trò của bạn chưa có quyền tạo connector."
                 onPickMcp={() => canCreateConnector && setShowAddCustom(true)}
-                onPickApiTool={() => canCreateConnector && setShowAddApiTool(true)}
               onPickToolkit={() => canCreateConnector && navigate("/connectors/custom/toolkits/new")}
               />
             </div>
@@ -451,12 +448,6 @@ export default function WorkspaceConnectors() {
         />
       )}
 
-      {showAddApiTool && (
-        <AddCustomApiToolModal
-          onClose={() => setShowAddApiTool(false)}
-          onCreated={() => { setShowAddApiTool(false); refresh(); }}
-        />
-      )}
 
       {editApiToolTarget && (
         <AddCustomApiToolModal
@@ -747,13 +738,12 @@ function CustomConnectorCard({ connector: c, isMine, onOpen, onEdit, onShare, on
 
 /** One "+ Thêm custom connector" button that asks which kind to add — MCP server or API Tool —
  * instead of two sibling buttons that read as unrelated actions. */
-function AddCustomConnectorMenu({ onPickMcp, onPickApiTool, onPickToolkit, disabled, disabledReason }: {
-  onPickMcp: () => void; onPickApiTool: () => void; onPickToolkit: () => void; disabled?: boolean; disabledReason?: string;
+function AddCustomConnectorMenu({ onPickMcp, onPickToolkit, disabled, disabledReason }: {
+  onPickMcp: () => void; onPickToolkit: () => void; disabled?: boolean; disabledReason?: string;
 }) {
   const [open, setOpen] = useState(false);
   const options = [
     { icon: Server, label: "MCP tùy chỉnh", sub: "Kết nối một MCP server để cấp các tool của nó cho agent.", onPick: onPickMcp },
-    { icon: Globe, label: "API Tool", sub: "Định nghĩa một REST API (URL, method, xác thực, tham số) để Agent gọi.", onPick: onPickApiTool },
     { icon: Layers, label: "Tool kit (REST API)", sub: "Khai báo nhiều REST API trên một base URL; mỗi operation thành một tool.", onPick: onPickToolkit },
   ];
   return (

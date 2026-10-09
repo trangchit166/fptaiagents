@@ -50,6 +50,7 @@ describe("Custom Connectors tab", () => {
     const buttons = screen.getAllByRole("button", { name: /Thêm custom connector/ });
     expect(buttons).toHaveLength(2);
     fireEvent.click(buttons[1]);
+    expect(screen.queryByRole("menuitem", { name: /API Tool/ })).toBeNull();
     fireEvent.click(screen.getByRole("menuitem", { name: /MCP tùy chỉnh/ }));
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("Tên"), { target: { value: "new-srv" } });

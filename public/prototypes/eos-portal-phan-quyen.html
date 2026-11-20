@@ -368,6 +368,8 @@ main p>a{display:inline-flex;align-items:center;min-height:32px;border-radius:va
 /* portal kiểu Frontegg: menu nhóm, bảng, ngăn chi tiết */
 .railgrp{font-size:11px;line-height:16px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);padding:12px 10px 4px}
 .rail.c .railgrp{display:none}
+.rail .soon{flex:none;font-size:11px;padding:0 6px}
+.rail.c .soon{display:none}
 .actorpill{gap:6px;padding-right:4px}.actorpill select{border:0;background:transparent;color:var(--text-primary);font:inherit;font-weight:500;max-width:150px;height:24px;padding:0 4px;border-radius:999px}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 .toolbar .search{max-width:320px}
@@ -553,14 +555,14 @@ document.addEventListener('click',function(e){var m=$('#menu');if(!m.hidden&&!m.
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('#menu').hidden){setMenu(false);$('#avbtn').focus()}});
 
 /* ---------- routing ---------- */
-var PANES=[['cocau','Cơ cấu','structure',0,'Tổ chức'],['principal','Người & nhóm','users',1,'Truy cập'],['roles','Vai trò','shield',1],['res','Phạm vi','layers',1],['tien','Ví & hạn mức','wallet',1],['trienkhai','Triển khai','chat',1]];
+var PANES=[['cocau','Cơ cấu','structure',0,'Tổ chức'],['principal','Người & nhóm','users',1,'Truy cập'],['roles','Vai trò','shield',1],['res','Phạm vi','layers',1],['tien','Ví & hạn mức','wallet',1,0,1],['trienkhai','Triển khai','chat',1,0,1]];
 function cur(){var h=location.hash.slice(1);return PANES.some(function(p){return p[0]===h})?h:'principal'}
 var rc=false;
 function rail(){
   var h='';
   PANES.forEach(function(p){
     if(p[4])h+='<div class="railgrp">'+p[4]+'</div>';
-    h+='<a href="#'+p[0]+'" title="'+p[1]+'"'+(cur()===p[0]?' aria-current="page"':'')+'>'+ic(p[2])+'<span class="lb">'+p[1]+'</span>'+'</a>';
+    h+='<a href="#'+p[0]+'" title="'+p[1]+'"'+(cur()===p[0]?' aria-current="page"':'')+'>'+ic(p[2])+'<span class="lb">'+p[1]+'</span>'+(p[5]?'<span class="badge soon">Coming soon</span>':'')+'</a>';
   });
   h+='<button class="railfoot" id="railfoot" type="button" aria-label="'+(rc?'Mở rộng thanh bên':'Thu gọn thanh bên')+'" title="'+(rc?'Mở rộng thanh bên':'Thu gọn thanh bên')+'">'+ic('side')+'<span class="lb">Thu gọn thanh bên</span></button>';
   var r=$('#rail');r.className='rail'+(rc?' c':'');r.innerHTML=h;
@@ -2153,7 +2155,7 @@ Q.wallet2={name:'Ví riêng Công ty A',limit:3000,used:400};
 var WORDER=['wallet','wallet2'],WLOCK=false,QUNIT={wallet:'b',co:'a',eos:'eos',sales:'sales',cskh:'cskh'},KUNIT={co:'a',eos:'eos',sales:'sales',cskh:'cskh'};
 var SPACEADMINS=['Nguyễn Hà'],FBM='Cảm ơn bạn đã nhắn tin. Hiện chúng tôi đang quá tải, nhân viên sẽ phản hồi bạn sớm nhất.',FEE={Zalo:'200 credit / tháng',Facebook:'200 credit / tháng',Website:'100 credit / tháng'};
 CH.forEach(function(c){c.owner='cskh';c.agent='ag1';c.per=40;c.by='Võ Hà'});
-PANES.splice(4,0,['audit','Nhật ký kiểm toán','book',1]);
+PANES.splice(4,0,['audit','Nhật ký kiểm toán','book',1,0,1]);
 
 /* ---------- engine: principal agent, ngoại trừ nhiều người, điều kiện theo nhãn ---------- */
 function inWho(p,w){if(!w||w==='none')return false;if(Array.isArray(w))return w.some(function(x){return inWho(p,x)});if(w==='all')return true;
